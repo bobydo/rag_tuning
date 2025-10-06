@@ -6,39 +6,60 @@ from langchain.storage import InMemoryStore
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from qdrant_client import QdrantClient
 
-def run_parent_doc(host, port, collection):
+def run_parent_doc(host, port, collection, query=None):
     print("[Parent Document Retriever]")
-    print("Handles large or hierarchical documents with chunk linking.")
-    print("Example: Parent doc split into sections, retrieved as a whole.")
+    print("Searches small chunks but returns larger parent documents for context.")
+    print("Example: Query matches a small chunk, but returns the full section/document")
+    print("Benefits: Provides more comprehensive context while maintaining precise search")
+
+    if query is None:
+        query = "How does vector storage work?"
+    
+    print(f"Query: {query}\n")
 
     client = QdrantClient(host=host, port=port)
     embedding_fn = OllamaEmbeddings(model=os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text"))
-    vectorstore = QdrantVectorStore(client=client, collection_name=collection, embedding=embedding_fn)
-
-    # Parent document retriever setup
-    store = InMemoryStore()
-    
-    # Create text splitters for parent and child documents
-    parent_splitter = RecursiveCharacterTextSplitter(chunk_size=2000)
-    child_splitter = RecursiveCharacterTextSplitter(chunk_size=400)
-    
-    retriever = ParentDocumentRetriever(
-        vectorstore=vectorstore,
-        docstore=store,
-        child_splitter=child_splitter,
-        parent_splitter=parent_splitter,
+    vectorstore = QdrantVectorStore(
+        client=client, 
+        collection_name=collection, 
+        embedding=embedding_fn,
+        content_payload_key="text"
     )
 
-    query = "How does vector storage work?"
-    print(f"\nQuery: {query}\n")
-
     try:
+        # Parent document retriever setup
+        store = InMemoryStore()
+        
+        # Create text splitters for parent and child documents
+        parent_splitter = RecursiveCharacterTextSplitter(chunk_size=2000)
+        child_splitter = RecursiveCharacterTextSplitter(chunk_size=400)
+        
+        retriever = ParentDocumentRetriever(
+            vectorstore=vectorstore,
+            docstore=store,
+            child_splitter=child_splitter,
+            parent_splitter=parent_splitter,
+        )
+
         docs = retriever.invoke(query)
-        for d in docs:
-            print(f"• Parent doc → {d.page_content[:100]}...")
+        
+        print("Parent Document Results:")
+        for i, d in enumerate(docs, 1):
+            print(f"Result {i}:")
+            print(f"Content: {d.page_content[:200]}...")
+            print(f"Metadata: {d.metadata}")
+            print("-" * 50)
+            
     except Exception as e:
-        print(f"Note: Parent document retriever requires document store setup. Error: {e}")
+        print(f"Note: Parent document retriever needs pre-loaded document store.")
+        print(f"Technical error: {str(e)[:100]}...\n")
+        print("Using fallback similarity search...")
+        
         # Fallback to simple similarity search
-        docs = vectorstore.similarity_search(query)
-        for d in docs:
-            print(f"• Fallback search → {d.page_content[:100]}...")
+        docs = vectorstore.similarity_search(query, k=3)
+        print("Fallback Results:")
+        for i, d in enumerate(docs, 1):
+            print(f"Result {i}:")
+            print(f"Content: {d.page_content[:200]}...")
+            print(f"Metadata: {d.metadata}")
+            print("-" * 50)
