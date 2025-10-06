@@ -1,0 +1,8 @@
+langchain
+langchain-community
+langchain-ollama
+langchain-qdrant
+qdrant-client
+ollama
+python-dotenv
+lark

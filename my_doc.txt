@@ -1,0 +1,11 @@
+# Building a Local Retrieval-Augmented Generation (RAG) System
+
+This document explains how to build a Retrieval-Augmented Generation (RAG) system using LangChain, Qdrant, and Ollama. The goal is to enable a local LLM to answer questions using external knowledge stored in a vector database.
+
+## 1. Overview
+
+RAG combines two main steps: retrieval and generation. The retriever finds relevant text chunks from a knowledge base, while the generator (the LLM) produces a natural-language answer based on those chunks. Using a local stack keeps data private and reduces dependency on cloud APIs.
+
+## 2. LangChain Integration
+
+LangChain provides the building blocks for
