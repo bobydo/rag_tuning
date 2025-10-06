@@ -109,8 +109,25 @@ Based on real testing with 61 document chunks and local Ollama setup:
 | Retriever Type | Response Time | Documents Retrieved | Practical Use |
 |----------------|---------------|-------------------|---------------|
 | **Baseline Similarity** | ~2.14 seconds | 3 documents | ✅ Production ready |
+| **Parent Document** | ~2.1 seconds | 0 documents* | ⚠️ Needs setup |
 | **Multi-Query** | ~76.32 seconds | 12 documents | ❌ Too slow for real-time |
-| **Parent Document** | ~3-4 seconds | Variable | ✅ Production ready |
+
+### 📊 Baseline vs Parent Document Comparison
+
+**Performance Analysis:**
+- **Baseline Similarity**: 2.10 seconds - pure vector search  
+- **Parent Document**: 2.12 seconds - 1.0x slower (virtually no overhead)
+- **Setup Issue**: Parent Document needs documents pre-loaded with parent-child structure
+
+**Current Demo Limitation:**
+- Qdrant has flat chunks, not hierarchical parent-child documents
+- Parent Document retriever returns 0 results (InMemoryStore is empty)
+- Shows timing analysis, then falls back to similarity search
+
+**When to Choose Each:**
+- **Baseline**: Ready to use, works with any chunk structure
+- **Parent Document**: Better context when properly configured with document hierarchy
+- **Setup Cost**: Requires additional document preprocessing and loading
 
 ### 🤔 So When Use Multi-Query?
 
@@ -128,11 +145,63 @@ Based on real testing with 61 document chunks and local Ollama setup:
 - **Research/offline**: When quality > speed matters
 
 ### 💡 The Reality
-- **Bottleneck**: LLM query generation (~74 seconds), not vector search (~2 seconds)
-- **Speed difference**: Multi-query is 36x slower than single query
-- **Production advice**: Stick with baseline similarity search unless you have cloud LLM infrastructure
 
-**Bottom line**: Multi-query improves recall but kills performance with local models. Choose based on your infrastructure and use case!
+**Multi-Query vs Baseline:**
+- **Bottleneck**: LLM query generation (~74 seconds), not vector search (~2 seconds)
+- **Speed difference**: Multi-query is 36x slower than baseline
+- **Production advice**: Avoid multi-query with local models
+
+**Parent Document vs Baseline:**
+- **Overhead**: Only 1.0x slower (minimal additional time)  
+- **Current Demo**: Returns 0 results (needs pre-loaded document store)
+- **Production Setup**: Requires documents loaded with parent-child structure
+- **Benefit**: Larger context chunks vs small fragments when properly configured
+
+**Bottom line**: 
+- **Baseline**: Choose for speed-critical applications
+- **Parent Document**: Choose for better answer quality with minimal overhead  
+- **Multi-Query**: Only with cloud LLMs or offline processing
+
+## 🏗️ Real-World Chunking Strategy Comparison
+
+### 📊 Production RAG Approaches
+
+| Approach | Complexity | Context Quality | Production Use |
+|----------|------------|----------------|----------------|
+| **Parent-Child** | Very High | Excellent | Rare (too complex) |
+| **Large Chunks + Overlap** | Low | Good | Very Common ✅ |
+| **Context Expansion** | Medium | Good | Common ✅ |
+| **Semantic Chunking** | Medium | Excellent | Growing ✅ |
+
+### 💡 What Actually Works in Production
+
+#### ✅ **Large Chunks + Overlap** (Most Popular)
+```python
+# What most successful RAG systems use:
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,      # Larger chunks = better context
+    chunk_overlap=200     # Overlap prevents lost information
+)
+```
+
+#### ✅ **Context Expansion** (Simple & Effective)
+- Search with small chunks (400 chars) for precision
+- Return neighboring chunks for context
+- No complex parent-child relationships needed
+
+#### ✅ **Semantic Chunking** (Best Quality)
+- Split on natural boundaries (sentences, paragraphs, topics)
+- Variable chunk sizes based on content structure
+- Higher complexity but significantly better results
+
+#### ❌ **Parent-Child Structure** (Academically Interesting, Practically Challenging)
+- **Complex setup**: Dual storage (vector DB + document store)
+- **Sync issues**: Hard to keep parent-child relationships consistent
+- **Storage cost**: ~2x requirements (child embeddings + parent content)
+- **Preprocessing**: Difficult to split documents naturally
+
+### 🎯 **Bottom Line**
+Parent-child structure is **academically interesting** but **practically challenging**. Most successful production RAG systems use simpler approaches that are easier to implement, maintain, and debug. The complexity rarely justifies the benefits!
 
 
 
