@@ -7,11 +7,6 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from qdrant_client import QdrantClient
 
 def run_parent_doc(host, port, collection, query=None):
-    print("[Parent Document Retriever]")
-    print("Searches small chunks but returns larger parent documents for context.")
-    print("Example: Query matches a small chunk, but returns the full section/document")
-    print("Benefits: Provides more comprehensive context while maintaining precise search")
-
     if query is None:
         query = "How does vector storage work?"
     

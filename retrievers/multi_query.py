@@ -1,17 +1,14 @@
 import os
+import time
 from langchain_qdrant import QdrantVectorStore
 from langchain_ollama import OllamaEmbeddings, ChatOllama
-from langchain.retrievers import MultiQueryRetriever
+from langchain.retrievers.multi_query import MultiQueryRetriever
 from qdrant_client import QdrantClient
 
 def run_multi_query(host, port, collection, query=None):
-    print("[Multi-Query Retriever]")
-    print("Generates multiple sub-queries for broader recall and diverse perspectives.")
-    print("Example: 'How does LangChain work?' → expands to multiple related queries")
-    print("Benefits: Captures different aspects and reduces retrieval blind spots")
-
     if query is None:
-        query = "Explain how Qdrant ensures scalability"
+        print("Missed query from run_multi_query")
+        return
     
     print(f"Query: {query}\n")
 
@@ -33,9 +30,46 @@ def run_multi_query(host, port, collection, query=None):
         )
         
         print("Generating multiple queries and retrieving results...")
-        docs = retriever.invoke(query)
         
-        print("Multi-Query Results:")
+        # PERFORMANCE ANALYSIS: How much time does multi-query actually take?
+        start_time = time.time()
+        docs = retriever.invoke(query)
+        end_time = time.time()
+        
+        print(f"⏱️  Multi-query retrieval took: {end_time - start_time:.2f} seconds")
+        print(f"📊 Retrieved {len(docs)} documents from multiple query variations")
+        
+        # REALITY CHECK: Is this practical for production?
+        if end_time - start_time > 10:
+            print(f"🚨 WARNING: Multi-query is TOO SLOW for real projects!")
+            print(f"   - Local Ollama LLM is the bottleneck (~70+ seconds)")
+            print(f"   - Vector searches are actually fast (~2-3 seconds each)")
+            print(f"   - Query generation dominates the time (not database searches)")
+        else:
+            print(f"✅ Performance acceptable for production use")
+        
+        # Compare with single query for reference
+        print(f"\n🔍 For comparison - single similarity search:")
+        single_start = time.time()
+        single_docs = vectorstore.similarity_search(query, k=3)
+        single_end = time.time()
+        print(f"⏱️  Single query took: {single_end - single_start:.2f} seconds")
+        print(f"📊 Retrieved {len(single_docs)} documents")
+        
+        # Performance comparison and recommendations
+        speed_ratio = (end_time - start_time) / (single_end - single_start)
+        print(f"\n📈 PERFORMANCE ANALYSIS:")
+        print(f"   Multi-query is {speed_ratio:.1f}x slower than single query")
+        if speed_ratio > 20:
+            print(f"   🏭 PRODUCTION REALITY: Multi-query only viable with:")
+            print(f"      - Cloud LLMs (GPT-4: ~2-3 seconds vs 70+ seconds)")
+            print(f"      - Dedicated GPU servers for local LLMs")
+            print(f"      - Async/background processing (not real-time queries)")
+            print(f"      - Cached query patterns for common searches")
+        else:
+            print(f"   ✅ Could work in production with current setup")
+        
+        print("\nMulti-Query Results:")
         for i, d in enumerate(docs, 1):
             print(f"Result {i}:")
             print(f"Content: {d.page_content[:200]}...")

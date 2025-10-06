@@ -23,22 +23,33 @@ This project demonstrates different retrieval strategies for RAG (Retrieval-Augm
 ```bash
 python run_retrievers.py
 ```
-This runs all retriever types with a single query to compare their outputs.
+Runs all retriever types with default test queries showing actual results.
 
-#### Comprehensive Analysis
+#### Behavior Analysis Mode
 ```bash
-python enhanced_retriever_demo.py
+python run_retrievers.py --mode behavior
 ```
-This provides detailed comparison across multiple test queries with formatted output.
+Explains what each retriever does conceptually without running expensive LLM calls.
 
-## 🔍 Retriever Types Demonstrated
+#### Custom Queries
+```bash
+# Single custom query
+python run_retrievers.py --query "Your question here"
 
-| Retriever | Purpose | Best For |
-|-----------|---------|----------|
-| **Baseline Similarity** | Simple vector search | Quick, straightforward retrieval |
-| **Multi-Query** | Generates multiple related queries | Broader recall, diverse perspectives |
-| **Self-Querying** | LLM interprets natural language filters | Complex queries with semantic constraints |
-| **Parent Document** | Returns larger context for small matches | Comprehensive context while maintaining precision |
+# Multiple custom queries  
+python run_retrievers.py --queries "Query 1" "Query 2" "Query 3"
+```
+
+## 🔍 Practical Retriever Types
+
+| Retriever | Purpose | Real-World Use Case |
+|-----------|---------|---------------------|
+| **Baseline Similarity** | Fast vector search | Works reliably with any content type |
+| **Multi-Query** | Generates multiple query variations | Improves recall for complex topics |
+| **Parent Document** | Small chunks search, large context return | Best for long documents needing comprehensive answers |
+
+### ❌ Why We Removed Self-Querying
+Self-querying requires rich metadata that most real-world content (emails, PDFs, chat logs) simply doesn't have, and adds expensive LLM calls to every query. Multi-query retrieval achieves better results without these dependencies.
 
 ## 🛠 Environment Variables
 ```bash
@@ -50,20 +61,25 @@ OLLAMA_EMBED_MODEL=nomic-embed-text
 
 ## 📊 Usage Examples
 
-### Test Different Queries
+### Default Test Queries
 ```bash
-# Compare how each retriever handles different question types
-python enhanced_retriever_demo.py
+# Run with built-in test queries
+python run_retrievers.py
 ```
 
 ### Custom Query Testing
-Modify the queries in `enhanced_retriever_demo.py`:
-```python
-queries = [
-    "Your custom query here",
-    "Another test question",
-    "Specific domain question"
-]
+```bash
+# Test a specific question
+python run_retrievers.py --query "How do embeddings work?"
+
+# Test multiple questions
+python run_retrievers.py --queries "What is RAG?" "How to optimize retrieval?" "Vector database benefits"
+```
+
+### Understanding Retriever Behavior
+```bash
+# Learn what each retriever does without expensive LLM calls
+python run_retrievers.py --mode behavior --query "Your question"
 ```
 
 ## 🔧 Prerequisites
@@ -75,13 +91,48 @@ queries = [
 ## 📁 Project Structure
 ```
 ├── main.py                     # Data preparation script
-├── run_retrievers.py          # Basic retriever comparison
-├── enhanced_retriever_demo.py # Comprehensive analysis tool
-├── qdrant_helper.py          # Qdrant utilities
-├── retrievers/               # Individual retriever implementations
-│   ├── multi_query.py
-│   ├── self_querying.py
-│   └── parent_doc.py
+├── run_retrievers.py          # Practical retriever comparison tool
+├── qdrant_helper.py          # Qdrant utilities  
+├── my_doc.txt                # Source document for embeddings
+
+├── retrievers/               # Practical retriever implementations
+│   ├── multi_query.py       # Query expansion for better recall
+│   └── parent_doc.py        # Hierarchical document retrieval
 └── data/
     └── demo_data.json        # Generated embeddings data
 ```
+
+## ⚡ Performance Benchmarks
+
+Based on real testing with 61 document chunks and local Ollama setup:
+
+| Retriever Type | Response Time | Documents Retrieved | Practical Use |
+|----------------|---------------|-------------------|---------------|
+| **Baseline Similarity** | ~2.14 seconds | 3 documents | ✅ Production ready |
+| **Multi-Query** | ~76.32 seconds | 12 documents | ❌ Too slow for real-time |
+| **Parent Document** | ~3-4 seconds | Variable | ✅ Production ready |
+
+### 🤔 So When Use Multi-Query?
+
+**❌ NOT practical for real projects with:**
+- Local Ollama models (70+ second LLM inference)
+- Real-time user queries (users expect <3 seconds)
+- Single-server deployments
+- Budget constraints
+
+**✅ Multi-query COULD work with:**
+- **Cloud LLMs**: GPT-4/Claude (~2-3 seconds vs 70+ seconds)
+- **GPU clusters**: Dedicated hardware for faster local inference
+- **Async processing**: Background query generation, not real-time
+- **Cached patterns**: Pre-generate variations for common searches
+- **Research/offline**: When quality > speed matters
+
+### 💡 The Reality
+- **Bottleneck**: LLM query generation (~74 seconds), not vector search (~2 seconds)
+- **Speed difference**: Multi-query is 36x slower than single query
+- **Production advice**: Stick with baseline similarity search unless you have cloud LLM infrastructure
+
+**Bottom line**: Multi-query improves recall but kills performance with local models. Choose based on your infrastructure and use case!
+
+
+

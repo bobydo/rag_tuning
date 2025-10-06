@@ -1,11 +1,646 @@
-# Building a Local Retrieval-Augmented Generation (RAG) System
+Skip to main content | Ads by Google | Cookie Policy | Privacy | Terms
 
-This document explains how to build a Retrieval-Augmented Generation (RAG) system using LangChain, Qdrant, and Ollama. The goal is to enable a local LLM to answer questions using external knowledge stored in a vector database.
+🍪 This website uses cookies to enhance your experience. Accept All | Manage Preferences
 
-## 1. Overview
+HOME PRODUCTS BLOG ABOUT CONTACT LOGIN
 
-RAG combines two main steps: retrieval and generation. The retriever finds relevant text chunks from a knowledge base, while the generator (the LLM) produces a natural-language answer based on those chunks. Using a local stack keeps data private and reduces dependency on cloud APIs.
+Vector Databases: The Complete Guide (2024) ⭐⭐⭐⭐⭐ 4.8/5 (247 reviews)
 
-## 2. LangChain Integration
+Posted by admin on March 15, 2024 | Updated: Oct 1, 2024 | 12 min read | 💬 89 comments
 
-LangChain provides the building blocks for
+So you want to build a RAG system? Well you're in luck because vector databases are HOT right now!! 🔥 Everyone's talking about them...
+
+What even IS a vector database anyway???
+
+Basically it stores your text as numbers (vectors) so you can do semantic search. Think of it like Google but for your own documents. Instead of exact word matching it understands MEANING.
+
+TOP VECTOR DB OPTIONS 2024:
+▶ Pinecone - $$$ but works great
+▶ Qdrant - open source, rust-based (FAST!)  
+▶ Weaviate - lots of features, kinda complex
+▶ Chroma - perfect for development/testing
+▶ PostgreSQL pgvector - surprisingly good!
+
+🚨 BREAKING: New OpenAI embedding models just dropped! ada-002 is being deprecated... 
+
+Real talk: I've been working with vector DBs for 2+ years and here's what I learned the hard way...
+
+Most tutorials are BS. They use perfect markdown documents but real data is MESSY AF. Think scraped web pages, PDFs with weird formatting, email dumps, chat logs, etc.
+
+Pro tip: Spend more time on data cleaning than model tuning. Garbage in = garbage out.
+
+ADVERTISEMENT: Try VectorPro - The all-in-one RAG platform! 50% off first month with code VECTOR50
+
+btw if you're just getting started, check out my other posts:
+- "Why Your RAG System Sucks (And How to Fix It)"
+- "Embedding Models Comparison 2024" 
+- "Chunking Strategies That Actually Work"
+
+Comments disabled due to spam. Email me: admin@vectordb-guide.com
+
+---
+
+REDDIT r/MachineLearning - Hot Post 🔥
+
+u/ml_researcher_2024 • 5 hours ago • 🥇 Gold Award
+
+Title: Spent 6 months building RAG system, learned some hard truths
+
+So I just finished deploying our company's internal RAG system (10k+ documents, mostly technical specs and emails). Thought I'd share what worked and what didn't...
+
+WHAT WORKED:
+✅ Multi-query retrieval (game changer!)
+✅ Hybrid search (BM25 + vector)
+✅ Simple chunking with overlap
+✅ PostgreSQL pgvector (way cheaper than Pinecone)
+
+WHAT DIDN'T WORK:
+❌ Self-querying (requires perfect metadata - we don't have that)
+❌ Complex retrieval chains (too many failure points)  
+❌ Fancy reranking models (marginal improvement, adds latency)
+❌ Trying to parse every document type (some PDFs are just garbage)
+
+Key insight: Focus on data quality over algorithm complexity. We spent weeks optimizing retrieval when the real issue was crappy OCR from scanned documents.
+
+Our stack: LangChain + pgvector + Ollama (local deployment for privacy)
+
+AMA about production RAG systems!
+
+TOP COMMENT (🥇 450 upvotes):
+u/senior_swe: "Thanks for the honest review! How do you handle document updates? Full reindex or incremental?"
+
+u/ml_researcher_2024: "Incremental for sure. Full reindex takes 4+ hours and we update docs daily. Built a simple change detection pipeline that monitors file timestamps."
+
+---
+
+Stack Overflow - CLOSED as duplicate
+
+Question: Vector embeddings returning weird results after model update
+
+Asked 2 days ago by confused_dev (reputation: 47)
+
+I updated from sentence-transformers/all-MiniLM-L6-v2 to all-mpnet-base-v2 and now my search results are completely different (worse). Same documents, same queries, different model = different vectors.
+
+Should I recompute all embeddings? Is this normal???
+
+Code:
+```python
+# OLD (worked fine)
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# NEW (weird results)  
+model = SentenceTransformer('all-mpnet-base-v2')
+```
+
+MARKED AS DUPLICATE of: "Why do different embedding models give different results?"
+
+COMMENTS:
+@vectorexpert: "Yes, you need to recompute. Different models = different vector spaces. Can't mix embeddings from different models."
+
+@confused_dev: "Ugh... that's 50k documents. Going to take forever 😭"
+
+---
+
+BLOG COMMENT SECTION:
+
+TechBlogger Pro | "Best RAG Frameworks 2024" | 127 comments
+
+@sarah_ml (3 hours ago): Has anyone tried the new LlamaIndex vs LangChain for RAG? LangChain feels bloated now...
+
+@rag_builder (2 hours ago): @sarah_ml LlamaIndex is cleaner but LangChain has more integrations. Depends on your use case.
+
+@startup_cto (2 hours ago): We migrated from LangChain to custom implementation. 10x performance improvement and way easier to debug.
+
+@enterprise_dev (1 hour ago): @startup_cto Custom sounds risky for production. What about updates and security patches?
+
+@startup_cto (1 hour ago): @enterprise_dev Fair point. We only went custom for the retrieval pipeline, still use established libs for embeddings/LLM.
+
+@ml_consultant (45 min ago): Hot take: Most companies don't need RAG. Regular search + better UX would solve 80% of use cases.
+
+@rag_enthusiast (30 min ago): @ml_consultant Disagree! RAG enables conversational interfaces which users love.
+
+@pragmatic_dev (15 min ago): Both of you are right. RAG is oversold but genuinely useful for specific scenarios.
+
+---
+
+SUPPORT TICKET #47291 - URGENT 🚨
+From: jessica.marketing@acmecorp.com  
+To: it-support@acmecorp.com
+Subject: HELP! Our search is completely broken!!!
+
+Hi IT team,
+
+I'm Jessica from marketing and our internal document search is giving me TERRIBLE results. I searched for "Q3 budget report" and it gave me:
+- A recipe for chocolate cake (???)  
+- Meeting notes from 2019
+- Someone's vacation photos
+
+This is URGENT because I need to present to the board tomorrow and I can't find ANY of our financial documents!!! 
+
+Also the search takes like 30 seconds which is WAY too slow. Our old system was instant.
+
+Can you please fix this ASAP? I'm starting to panic...
+
+Thanks,
+Jessica
+
+P.S. - I heard you guys implemented some fancy "AI search" but honestly the old keyword search worked better. Just saying...
+
+---
+
+RESPONSE - TICKET #47291
+From: mike.devops@acmecorp.com
+To: jessica.marketing@acmecorp.com  
+CC: it-support@acmecorp.com
+
+Hi Jessica,
+
+I looked into the issue. The problem is our new RAG system is searching based on "semantic similarity" not exact keywords. When you search "Q3 budget report" it's finding documents that are conceptually similar but not necessarily what you want.
+
+Quick fixes:
+1. Try more specific queries like "quarterly financial budget third quarter 2024"
+2. Use the advanced filters on the left sidebar
+3. The old keyword search is still available - click "Classic Search" at the bottom
+
+The 30-second delay is because we're running everything locally for security. Enterprise cloud solutions would be faster but legal won't approve external APIs for financial data.
+
+I'll talk to the team about tuning the search parameters. Maybe we can add some hybrid search that combines keyword + semantic matching.
+
+BTW that chocolate cake recipe probably matched because it mentioned "ingredients budget" or something like that. The AI is trying its best! 😅
+
+-Mike
+
+---
+
+EMAIL THREAD - Subject: RAG system performance issues 🤦‍♂️
+
+From: alex.senior-dev@techstartup.io
+To: team-backend@techstartup.io
+Sent: Thursday, Oct 3, 2024 2:17 PM
+
+Team,
+
+Our RAG system is struggling with the new customer data dump. Some observations:
+
+❌ Query latency spiked to 12+ seconds  
+❌ Relevance scores are all over the place
+❌ Users complaining about weird results again
+
+I think the issue is data quality. The new docs include:
+- Email chains with tons of quoted text
+- PPT exports that are basically unreadable  
+- Scanned PDFs with terrible OCR
+- Random CSV files that somehow got included
+
+Options:
+1. Better data filtering upfront
+2. Different chunking strategy  
+3. Just throw more compute at it (expensive...)
+
+Thoughts?
+
+-Alex
+
+---
+
+REPLY From: jenny.ml-eng@techstartup.io
+Sent: Thursday, Oct 3, 2024 3:42 PM
+
+@alex I ran some tests yesterday. The problem isn't compute - it's that we're retrieving way too many irrelevant chunks.
+
+Example: User asks "what's our refund policy" and we return 20 chunks including:
+- A random mention of "policy" from an HR email
+- Financial reports that happen to mention "refunds"  
+- Legal disclaimers with the word "policy"
+- Actual refund policy (buried in position #17)
+
+Maybe we need to implement hybrid search? Or at least boost exact keyword matches...
+
+Also found a bug: some chunks are completely empty or just contain "Page 1 of 47" type headers. Our preprocessing is broken.
+
+-Jenny
+
+---
+
+From: marcus.cto@techstartup.io  
+Sent: Thursday, Oct 3, 2024 4:15 PM
+
+Both good points. Let's do a quick fix for now:
+
+1. @jenny can you filter out chunks < 50 chars?
+2. @alex let's try multi-query retrieval - I read it helps with precision
+3. We should probably rebuild the embeddings this weekend with better data cleaning
+
+BTW I'm getting pressure from sales to ship this. They promised the demo to BigCorp next week 😬
+
+Schedule a call tomorrow?
+
+-Marcus
+
+---
+
+SCRAPED FROM: internal-wiki-backup-2024.html (WARNING: May contain malformed HTML)
+
+<html><head><title>Internal Wiki - RAG Implementation Notes</title></head>
+<body bgcolor="#ffffff">
+
+<h1>RAG System Implementation - Project Falcon</h1>
+<i>Last updated: Sept 15, 2024 by David Chen</i>
+
+<p><b>Status:</b> <font color="green">LIVE IN PRODUCTION</font></p>
+
+<p>After 8 months of development, our RAG system is finally deployed! Here's what we learned...</p>
+
+<h2>Technology Stack:</h2>
+<ul>
+<li>Vector DB: Qdrant (running on k8s cluster)</li>  
+<li>Embeddings: OpenAI ada-002 → Switched to Ollama nomic-embed-text (cost savings)</li>
+<li>LLM: GPT-4 → Switched to local Llama3 (privacy requirements)</li>
+<li>Framework: LangChain (love/hate relationship)</li>
+</ul>
+
+<h2>Pain Points:</h2>
+<ol>
+<li><b>Data Quality:</b> Our documents are a mess. PDFs with weird encoding, Word docs with tables that don't parse properly, scanned images with terrible OCR...</li>
+<li><b>Chunking Strategy:</b> Tried 10 different approaches. Settled on 500 chars with 50 char overlap. Not perfect but good enough.</li>
+<li><b>Metadata Extraction:</b> Originally planned fancy auto-tagging. Reality: most docs don't have useful metadata. Now we just use filename + date.</li>
+<li><b>Performance:</b> First version took 45 seconds per query. Current version: ~3-4 seconds. Still not great but acceptable.</li>
+</ol>
+
+<h2>What Actually Works:</h2>
+<p>Multi-query retrieval is AMAZING. Instead of searching once, generate 3-5 variations of the query and combine results. Huge improvement in recall.</p>
+
+<p>Parent-document retrieval helps too. Search on small chunks but return larger context. Users need more context than just the matching sentence.</p>
+
+<p><font color="red"><b>AVOID:</b></font> Self-querying retrieval. Sounds great in theory but requires high-quality metadata which we don't have. Spent 3 weeks on it and threw it away.</p>
+
+<h2>Lessons Learned:</h2>
+<p>❌ Don't optimize prematurely<br>
+❌ Don't trust academic benchmarks<br>  
+❌ Don't assume your data is clean<br>
+✅ Start simple and iterate<br>
+✅ Focus on user experience over technical elegance<br>
+✅ Test with real users early and often</p>
+
+<p><i>Next phase: Add hybrid search (keyword + vector) and better result ranking.</i></p>
+
+</body></html>
+
+---
+
+HACKER NEWS DISCUSSION
+
+Show HN: I built a RAG system for my company's 50k internal docs (ycombinator.com)
+142 points by rag_builder 8 hours ago | 89 comments
+
+rag_builder 8 hours ago:
+After getting tired of our terrible internal search, I spent nights and weekends building a RAG system. Stack: Python + LangChain + local Ollama models for privacy.
+
+Biggest surprise: Multi-query retrieval made a HUGE difference. Single queries often miss relevant docs due to vocabulary mismatch.
+
+Biggest disappointment: Spent weeks on fancy reranking models. Barely moved the needle vs simple similarity search.
+
+Would love feedback from others who've done this at scale!
+
+Edit: Adding Github link soon, just need to clean up the terrible code 😅
+
+---
+
+techie_mike 7 hours ago:
+Nice work! How do you handle document updates? Full reindex or something smarter?
+
+rag_builder 7 hours ago:
+Good question! We do incremental updates by comparing file hashes. Only reprocess changed docs. Full reindex takes 4+ hours which would kill productivity.
+
+---
+
+enterprise_alice 6 hours ago:
+What's your chunk size strategy? We're struggling with this at $BIGCORP.
+
+rag_builder 6 hours ago:
+Started with 1000 chars but found too much noise. Now doing 500 chars with 50 char overlap. Not scientific but works for our docs.
+
+Pro tip: Log all the queries where users click "this doesn't help" and analyze the retrieved chunks. Eye-opening.
+
+---
+
+skeptical_sam 5 hours ago:
+How do you measure success? "Users love it" is not very concrete...
+
+rag_builder 4 hours ago:
+Fair point. We track:
+- Query→click rate (up 34%)  
+- "Not helpful" votes (down 60%)
+- Time to find info (down from avg 8 min to 3 min)
+- Support ticket volume for "can't find X" (down 40%)
+
+Still far from perfect but clear improvement over keyword search.
+
+---
+
+ai_researcher 3 hours ago:
+Interesting that reranking didn't help. Which models did you try?
+
+rag_builder 2 hours ago:
+Tried Cohere rerank, sentence-transformers cross-encoder, and BGE reranker. All added latency (400ms+) for maybe 5% improvement in relevance.
+
+I think the issue is our queries are pretty simple. Reranking shines with complex multi-faceted questions which we rarely get.
+
+---
+
+pragmatic_paul 2 hours ago:
+This is exactly the kind of practical engineering I like to see. Most RAG demos use perfect markdown docs which isn't real life.
+
+rag_builder 1 hour ago:
+Exactly! Real docs are messy. We have:
+- PDFs where tables become garbled text
+- Email dumps with huge signature blocks  
+- Word docs with random formatting
+- Scanned documents with OCR errors
+- CSV files that somehow got included
+
+The hardest part isn't the ML - it's data preprocessing and making sense of corporate document chaos.
+---
+
+DISCORD CHAT LOG - #rag-help channel
+
+VectorNoob [Today at 2:14 PM]
+hey everyone! been trying to get qdrant working with langchain for 2 days now... getting this error:
+
+```
+ValueError: QdrantVectorStore requires content_payload_key to be set when using payload-based storage.
+```
+
+anyone know what this means??? my code looks right to me 😭
+
+RagExpert [Today at 2:16 PM]
+@VectorNoob you need to set content_payload_key="text" when creating the QdrantVectorStore
+
+also check your collection config - what embedding model are you using?
+
+VectorNoob [Today at 2:17 PM]  
+@RagExpert using nomic-embed-text through ollama. here's my code:
+
+```python
+vectorstore = QdrantVectorStore(
+    client=client,
+    collection_name="my_docs",
+    embeddings=ollama_embeddings
+)
+```
+
+wait... do I need the content_payload_key thing?
+
+DataScientistMike [Today at 2:18 PM]
+@VectorNoob yep, add content_payload_key="text"
+
+also pro tip: if you're getting empty results make sure your documents actually have content in the "text" field. took me hours to figure that out lol
+
+RagExpert [Today at 2:19 PM]
+^^ this. also @VectorNoob what's your vector size? nomic-embed-text is 768 dimensions
+
+VectorNoob [Today at 2:20 PM]
+@RagExpert honestly not sure... how do I check?
+
+RagExpert [Today at 2:21 PM]
+check your qdrant collection settings. if you created it wrong you'll need to delete and recreate
+
+```python
+# correct setup for nomic-embed-text
+vectors_config = VectorParams(
+    size=768,
+    distance=Distance.COSINE
+)
+```
+
+StartupCTO [Today at 2:25 PM]
+btw if you're just getting started, use chroma instead of qdrant. way less configuration headaches
+
+VectorNoob [Today at 2:26 PM]
+@StartupCTO thanks but my boss specifically wants qdrant... something about "production scalability"
+
+DataScientistMike [Today at 2:27 PM]
+@VectorNoob @StartupCTO qdrant is fine once you get it working. just has a steeper learning curve
+
+also @VectorNoob make sure your ollama is actually running. I've made that mistake more times than I care to admit 🤦‍♂️
+
+VectorNoob [Today at 2:30 PM]
+OMGGG it worked!!! added the content_payload_key="text" and now getting actual results instead of empty strings
+
+thanks everyone! 🎉
+
+RagExpert [Today at 2:31 PM]
+@VectorNoob nice! now the real fun begins... wait until you start trying to optimize chunk sizes and overlap 😈
+
+---
+)
+```
+
+### 6.2 Indexing Parameters
+HNSW (Hierarchical Navigable Small World) parameters affect search speed and accuracy:
+- m: Number of connections (16-64, higher = better accuracy, more memory)
+- ef_construct: Search width during construction (100-800)
+- ef: Search width during query (higher = better accuracy, slower search)
+
+### 6.3 Payload Indexing
+Create indexes on frequently filtered fields:
+```python
+client.create_payload_index(
+    collection_name="documents",
+---
+
+FORUM POST EXCERPT:
+
+Subject: HELP!!! Embeddings not working properly  
+Posted by: confused_dev | 2 days ago
+
+hey everyone.. having weird issues with my RAG setup. embeddings seem ok in isolation but retrieval is garbage. same documents returning for totally different queries???
+
+setup:
+- langchain 0.1.x (latest)
+- sentence-transformers/all-MiniLM-L6-v2  
+- qdrant local docker
+- ~500 docs, mostly PDFs and markdown
+
+example: I search "python tutorial" and get back:
+1. Document about Java Spring framework (??)
+2. Random email about vacation policy
+3. Actual python tutorial (finally!)
+
+similarity scores all look normal (0.7-0.8 range)... what am I doing wrong???
+
+UPDATE: tried different chunk sizes (256, 512, 1024) - still weird results. Maybe my data is just bad quality?
+
+---
+
+REPLIES (5):
+
+@rag_helper: "Check your document preprocessing. I bet you have a lot of empty or near-empty chunks polluting your vector space."
+
+@confused_dev: "@rag_helper how do I check that? using default langchain text splitter"
+
+@senior_ml_guy: "This smells like a normalization issue. Are you using cosine distance? Check if your embeddings are properly normalized."
+
+@confused_dev: "@senior_ml_guy using default qdrant settings... should I change something?"
+
+@data_guru: "Post your actual code. Also run some sample queries and show the retrieved chunks + scores. Hard to debug without seeing actual data."
+
+---
+
+YOUTUBE VIDEO TRANSCRIPT (auto-generated, contains errors):
+
+Title: "Building RAG Systems: What They Don't Tell You" | 15,847 views
+
+[00:12] so today we're going to talk about rag systems and honestly there's a lot of BS out there in tutorials uh most of them show you these perfect examples with like wikipedia articles or whatever but real data is messy as hell
+
+[00:28] first thing is chunk size right everybody talks about this but nobody tells you that optimal chunk size completely depends on your data if you have short documents like tweets or emails maybe 200 characters is fine but if you have long technical documents you might want 1000 or more
+
+[00:45] second thing overlap uh I see people using like 20% overlap which sounds scientific but honestly I just try different values and see what works best for my specific use case don't overthink it
+
+[01:02] now here's something nobody talks about your embedding model matters WAY more than your retrieval strategy I spent weeks optimizing retrieval when I should have just tried different embedding models  
+
+[01:18] also metadata everyone says you need rich metadata for filtering but most real documents don't have good metadata it's usually just filename maybe date if you're lucky
+
+[01:35] oh and self querying retrieval that everyone's excited about? Forget it unless you have perfect metadata which you probably don't it'll just return garbage
+
+[01:48] what actually works multi query retrieval is amazing instead of one query generate like 3 to 5 variations and search for all of them then combine results huge improvement
+
+[02:05] parent document retrieval is also great search with small chunks but return larger context users need more than just the matching sentence
+
+[02:18] anyway that's my rant uh links in description to my github with actual working code not perfect markdown examples like everyone else posts
+
+Comments (247):
+@ml_student: "Thank you! Finally someone being honest about real world RAG"
+@enterprise_dev: "The metadata point is so true. We tried self-querying for months before giving up"
+@skeptical_sam: "Disagree on chunk size. 500 chars with 50 char overlap works for 80% of cases"
+
+---
+
+CHAT LOG - Slack #data-team
+
+Sarah Chen - Today at 9:23 AM
+Anyone else having issues with the new embedding model? We switched from OpenAI ada-002 to nomic-embed-text and results are... weird
+
+Mike Rodriguez - Today at 9:25 AM  
+@Sarah Chen define weird lol
+
+Sarah Chen - Today at 9:26 AM
+Like searching for "quarterly reports" returns a recipe for banana bread as the top result 🤦‍♀️
+
+David Park - Today at 9:27 AM
+😂 that's actually hilarious but also concerning
+
+Mike Rodriguez - Today at 9:28 AM
+@Sarah Chen did you rebuild all the embeddings? you can't mix ada-002 vectors with nomic-embed-text they're different dimensional spaces
+
+Sarah Chen - Today at 9:30 AM
+@Mike Rodriguez OH.... that might be it. I just updated the embedding function but kept the existing vectors in qdrant
+
+Sarah Chen - Today at 9:31 AM
+this is going to take forever to reindex 😭 we have like 100k documents
+
+David Park - Today at 9:32 AM
+@Sarah Chen pro tip: do it over the weekend and maybe batch it so you don't kill the server
+
+Mike Rodriguez - Today at 9:33 AM
+also @Sarah Chen you might want to try hybrid search once you rebuild. keyword + semantic often works better than pure vector search
+
+Sarah Chen - Today at 9:35 AM
+@Mike Rodriguez any libraries you recommend? or should I just implement it myself?
+
+Mike Rodriguez - Today at 9:36 AM
+weaviate has decent hybrid search built-in but if you're stuck with qdrant maybe just run BM25 in parallel and combine scores
+
+David Park - Today at 9:38 AM
+or try the new qdrant sparse vectors feature if you're feeling adventurous
+
+Sarah Chen - Today at 9:40 AM
+ugh I just want search that works 😫
+
+Mike Rodriguez - Today at 9:41 AM
+@Sarah Chen welcome to the world of production ML lol
+
+Home > Products > AI Tools > Vector Databases    Contact Us | Login | Sign Up    MENU
+
+VECTOR DATABASE COMPARISON 2024 - ULTIMATE GUIDE!!!
+
+by TechReviewer99 | Posted 3 months ago | 47 comments | Share on: Facebook Twitter LinkedIn
+
+So you're looking for vector db right?? Here's what I found after testing like 10+ different solutions...
+
+TLDR: Qdrant is pretty good but Pinecone expensive af. Weaviate ok but complex setup. Chroma good for local dev.
+
+🔥 TOP PICKS:
+1) Qdrant - solid choice, decent pricing, rust-based (fast!)
+2) Pinecone - best UX but $$$ 
+3) Weaviate - feature rich, steep learning curve
+4) Chroma - free, easy setup, good for POCs
+
+Random tip: always benchmark your actual data don't trust marketing numbers lol
+
+UPDATE: Tried the new PostgreSQL pgvector extension... surprisingly good! Way cheaper than SaaS options. Setup was annoying though.
+
+See my detailed review at techreviewer99.com/vector-db-2024 (includes performance benchmarks, cost analysis, etc)
+
+---
+
+Email Signature:
+Mike Chen
+Senior ML Engineer @ DataCorp
+mike.chen@datacorp.ai | LinkedIn: /in/mikechen-ml
+"Data is the new oil, but most of it is crude" - Me
+
+COMMENTS:
+@sarah_dev: "Thanks for this! Saved me hours of research. Going with Qdrant based on your rec"
+@vectorExpert: "Missing Milvus in your comparison?? It's enterprise grade"
+@mike_author: "@vectorExpert good point, will add to next review"
+
+---
+
+FORUM POST EXCERPT:
+
+Subject: HELP!!! Embeddings not working properly
+Posted by: confused_dev | 2 days ago
+
+hey everyone.. having weird issues with my RAG setup. embeddings seem ok in isolation but retrieval is garbage. same documents returning for totally different queries???
+
+setup:
+- langchain 0.1.x (latest)
+- sentence-transformers/all-MiniLM-L6-v2
+- qdrant local docker
+- ~500 docs, mostly PDFs and markdown
+
+tried:
+✗ different embedding models
+✗ adjusting chunk sizes (256, 512, 1024)
+✗ overlap settings
+✗ reindexing everything
+
+results still weird... "how to cook pasta" returning docs about "database optimization"
+
+anyone seen this before??
+
+UPDATE: SOLVED! turns out my text preprocessing was broken... was accidentally removing all punctuation including periods so sentences were getting mushed together. rookie mistake 🤦‍♂️
+
+---
+
+SUPPORT TICKET FRAGMENT:
+
+Ticket #TKT-4471 | Priority: Medium | Status: Resolved
+Customer: enterprise-client-x | Plan: Business Pro
+Created: 2024-09-15 14:23 UTC | Resolved: 2024-09-16 09:45 UTC
+
+Issue Summary: Vector search returning irrelevant results after recent update
+
+Customer Report:
+"Hi support team, since upgrading to v2.1.3 last week our vector search quality has degraded significantly. Users complaining about poor recommendations. Same queries that worked fine before now return completely unrelated content. Using default embedding model (ada-002). Index size: ~2M vectors. Please advise ASAP as this is affecting production."
+
+Agent Notes:
+- Reproduced issue in staging environment
+- Embedding model config unchanged
+- Issue traced to similarity threshold change in v2.1.3 (default lowered from 0.8 to 0.7)
+- Workaround: manually set threshold=0.8 in search params
+- Permanent fix deployed in v2.1.4
+
+Resolution:
+Updated documentation to highlight breaking change in v2.1.3. Customer confirmed search quality restored after applying workaround.
